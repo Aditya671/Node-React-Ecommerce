@@ -16,6 +16,7 @@ import { default as connectMongoDBSession } from 'connect-mongodb-session';
 
 // Import Code Files
 import { errorHandler } from "./handlers/index.js";
+import appRoutes from './routers/index.js';
 
 // Configurations
 const MongoDBStore = connectMongoDBSession(session);
@@ -65,7 +66,7 @@ app.use('/api/welcome', (req, res, next) => {
    res.send("Hello!! Welcome to the Ecommerce App")
    next()
 })
-
+app.use('/api',appRoutes)
 
 // Handle Server
 const start = async () => {
