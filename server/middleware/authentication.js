@@ -8,6 +8,9 @@ class Authentication{
     constructor(){
         this.secretJWTKey = generateSecketCipher()
     }
+    static __self__(){
+        return console.log('\n -----> Authentication Signature -> \n')
+    }
     async signJWTToken(data,next){
         try{
             const token = jwt.sign(data,generateSecketCipher(),{expiresIn:process.env.JWT_LIETIME})
