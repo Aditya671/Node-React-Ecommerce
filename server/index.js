@@ -17,10 +17,10 @@ import { default as connectMongoDBSession } from 'connect-mongodb-session';
 // Import Code Files
 import { errorHandler } from "./handlers/index.js";
 import appRoutes from './routers/index.js';
+import { mongoDbConnect } from './middleware/mongoConnect.js';
 
 // Configurations
 const MongoDBStore = connectMongoDBSession(session);
-const authenticateUser = new Authentication()
 const app = express();
 const store = new MongoDBStore({
    uri: process.env.MONGO_URL,
@@ -73,9 +73,10 @@ const start = async () => {
    try {
       await mongoDbConnect(process.env.MONGO_URL);
       app.listen(port, () => console.log("server listen"));
+      console.log('\n----- mongoDb Connection Established ->\n')
    }
    catch (err) {
-      next(err)
+      console.log(err)
    }
 }
 app.use(errorHandler)
