@@ -4,19 +4,25 @@ import {UnAuthorizedAccess} from '../../handlers/exceptions/UnAuthorizedAccess.j
 import {ValidationError} from "../../handlers/exceptions/ValidationError.js";
 import bcrypt from "bcryptjs";
 import Authentication from "../../middleware/authentication.js";
-class Auth extends AuthValidator{
+class Auth{
     constructor(){
-        super();
+        this.className = "Auth";
         this.authSignature = new  Authentication();
     }
-    static __self__(){
-        return console.log('\n----- Auth - AuthValidator ->\n')
+    static __selfStart__(){
+        return console.log(`\n----- ${this.name} -> Start\n`)
     }
-    postLogin(req,res,next){
+    static __selfEnd__(){
+        return console.log(`\n----- ${this.name} -> End\n`)
+    }
+    async postLogin(req,res,next){
         try{
+           Auth.__selfStart__()
             let user = ''
             const {email,username,phone,password} = req.body;
-            const isValid = this.authenticateFields(req.body,next);
+            const validator = new AuthValidator()
+            const isValid = await validator.authenticateFields(req.body,next);
+
             if (!isValid.error){
                 if(email){
                     user = isValid.value.email
@@ -39,7 +45,7 @@ class Auth extends AuthValidator{
                         message:item.message
                     }
                 })
-                throw ValidationError(errorValues);
+                throw new ValidationError(errorValues);
             }
             let token = '';
             const isPasswordCorrect  = bcrypt.compare(user.password, password);
@@ -59,11 +65,13 @@ class Auth extends AuthValidator{
         }catch(err){
             next(err)
         }finally{
-            console.log('\n----- Auth -> postLogin Method Called ->\n')
+            console.log(`\n----- Auth -> postLogin Method Called ->\n`)
+            Auth.__selfEnd__()
         }
     }
     postRegister(req,res,next){
         try{
+            Auth.__selfStart__()
             let user = ''
             const {email,username,phone,password} = req.body;
             const isValid = this.authenticateFields(req.body,next);
@@ -85,7 +93,7 @@ class Auth extends AuthValidator{
                         message:item.message
                     }
                 })
-                throw ValidationError(errorValues);
+                throw new ValidationError(errorValues);
             }
             let token = '';
             token = this.authSignature.signJWTToken(data,next);
@@ -97,19 +105,22 @@ class Auth extends AuthValidator{
         }catch(err){
             next(err)
         }finally{
-            console.log('\n----- Auth -> postRegister Method Called ->\n')
+            console.log(`\n----- ${Auth.name} -> postRegister Method Called ->\n`)
+            Auth.__selfEnd__()
         }        
     }
     postLogout(req,res,next){
         try{
+            Auth.__selfStart__()
             req.session.destroy(err => {
                 console.log(err)
             })
             res.status(StatusCodes.OK).send({'msg':'Redirect to Login Page'})    
         }catch(err){
             next(err)
-        }finally{
-            console.log('\n----- Auth -> postLogout Method Called ->\n')
+        }finally{            
+            console.log(`\n----- ${this.className} -> postLogout Method Called ->\n`)
+            Auth.__selfEnd__()
         }     
     }
 }

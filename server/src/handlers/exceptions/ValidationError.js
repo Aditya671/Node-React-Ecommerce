@@ -1,5 +1,5 @@
 import { StatusCodes } from 'http-status-codes';
-import { CustomAPIError } from './handler/CustomAPIError.js';
+import { CustomAPIError } from './CustomAPIError.js';
 
 export class ValidationError extends CustomAPIError {
    constructor(description) {

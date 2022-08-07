@@ -2,8 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoSantitze from 'express-mongo-sanitize';
-import path, { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import "express-async-errors";
 import bodyParser from 'body-parser';
 import multer from 'multer';
 import xss from 'xss-clean';
@@ -11,13 +10,14 @@ import helmet from 'helmet';
 import rateLimit from "express-rate-limit";
 import session from 'express-session';
 import { default as connectMongoDBSession } from 'connect-mongodb-session';
-
-
+import morgan from 'morgan';
+import { applicationPath } from './src/utils/applicationPath.js';
 
 // Import Code Files
-import { errorHandler } from "./handlers/index.js";
-import appRoutes from './routers/index.js';
-import { mongoDbConnect } from './middleware/mongoConnect.js';
+import { errorHandler } from "./src/handlers/index.js";
+import appRoutes from './src/routers/index.js';
+import { mongoDbConnect } from './src/middleware/mongoConnect.js';
+
 
 // Configurations
 const MongoDBStore = connectMongoDBSession(session);
@@ -26,8 +26,8 @@ const store = new MongoDBStore({
    uri: process.env.MONGO_URL,
    collection: 'session'
 })
-const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config();
+
+dotenv.config({path:applicationPath(".env")});
 const corsOptions = {
    origin: "http://localhost:3000",
    optionsSuccessStatus: 200,
@@ -43,8 +43,8 @@ const rateLimiter = rateLimit({
 });
 
 // Server Configurations
-app.use(express.static(path.resolve(__dirname, './client/build')));
-app.use(express.static(path.resolve(__dirname, './client/public')));
+
+// app.use(express.static(applicationPath("./client/public")));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(xss());
 app.use(helmet());
@@ -60,9 +60,9 @@ app.use(session({
    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }
 }
 ));
-
+app.use(morgan(process.env.NODE_ENV_DEV))
 // Main Application Start Here
-app.use('/api/welcome', (req, res, next) => {
+app.use('/api/welcome',async (req, res, next) => {
    res.send("Hello!! Welcome to the Ecommerce App")
    next()
 })

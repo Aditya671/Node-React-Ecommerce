@@ -10,15 +10,14 @@ export const errorHandler = (err, req, res, next) => {
     );
 
     if (err) {
-        defaultError.errorCode = err.errorCode,
-            defaultError.description = err.description,
-            defaultError.message = err.message
+        defaultError.errorCode = err.errorCode === undefined ? StatusCodes.INTERNAL_SERVER_ERROR : err.errorCode,
+        defaultError.description = err.description === undefined ? "Server Error":err.description,
+        defaultError.message = err.message === undefined ? "Please try again later":err.message
     }
-    if (req.file) {
+    if (req.file) { 
         fs.unlink(req.file.path, (err) => {
             defaultError.message = err.message;
         })
     }
-    console.log(err)
-    res.status(defaultError.errorCode).send(defaultError.message)
+    res.status(defaultError.errorCode).send(defaultError)
 }

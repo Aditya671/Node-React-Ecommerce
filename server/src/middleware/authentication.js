@@ -15,7 +15,7 @@ class Authentication{
         try{
             const token = jwt.sign(data,generateSecketCipher(),{expiresIn:process.env.JWT_LIETIME})
             if (token) return token
-            else ValidationError("Issue with signing token");
+            else new ValidationError("Issue with signing token");
         }
         catch(err){
             next(err)
@@ -29,7 +29,7 @@ class Authentication{
             const token  = req.header.authentication.split(" ")[1]
             const isVerifed = jwt.verify(token,generateSecketCipher())
             if (isVerifed) return token
-            else ValidationError("Token Invalid")
+            else new ValidationError("Token Invalid")
         }catch(err){
             next(err)
 
