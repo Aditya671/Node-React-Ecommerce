@@ -48,7 +48,7 @@ class Auth{
                 throw new ValidationError(errorValues);
             }
             let token = '';
-            const isPasswordCorrect  = bcrypt.compare(user.password, password);
+            const isPasswordCorrect  = await bcrypt.compare(user.password, password);
             if (isPasswordCorrect){
                 const data = {email:email,user:user};
                 token = this.authSignature.signJWTToken(data,next);
