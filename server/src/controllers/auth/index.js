@@ -1,13 +1,15 @@
+import bcrypt from "bcryptjs";
 import { StatusCodes } from "http-status-codes";
 import AuthValidator from '../../validators/auth-validator.js';
 import {UnAuthorizedAccess} from '../../handlers/exceptions/UnAuthorizedAccess.js'
 import {ValidationError} from "../../handlers/exceptions/ValidationError.js";
-import bcrypt from "bcryptjs";
 import Authentication from "../../middleware/authentication.js";
+import userCredential from "../../models/auth/index.js";
+import usersSchema from "../../models/users/index.js";
+
 class Auth{
     constructor(){
         this.className = "Auth";
-        this.authSignature = new  Authentication();
     }
     static __selfStart__(){
         return console.log(`\n----- ${this.name} -> Start\n`)
@@ -25,17 +27,11 @@ class Auth{
 
             if (!isValid.error){
                 if(email){
-                    user = isValid.value.email
+                    user = await userCredential.findOne({email}).exec()
                 }else if (username){
-                    user = isValid.value.username
+                    user = await userCredential.findOne({username}).select('+password')
                 }else if(phone){
-                    user = isValid.value.phone
-                }else{
-                    user = email ? email : (username ? username : (phone ? phone : undefined) )
-                    throw UnAuthorizedAccess(
-                        `Invalid User ${user}`,
-                        "Please Provide Correct Login"
-                    )
+                    user = await userCredential.findOne({phone}).select('+password')
                 }
             }else{
                 let errorDetails = isValid.error.details
@@ -47,21 +43,30 @@ class Auth{
                 })
                 throw new ValidationError(errorValues);
             }
-            let token = '';
-            const isPasswordCorrect  = await bcrypt.compare(user.password, password);
-            if (isPasswordCorrect){
-                const data = {email:email,user:user};
-                token = this.authSignature.signJWTToken(data,next);
+            if (user){
+                const isPasswordCorrect  = await bcrypt.compare(user.password, password);
+                if (isPasswordCorrect){
+                    const data = {email:email,user:user.password};
+                    const authSignature = new Authentication();
+                    const token = await authSignature.signJWTToken(data,next);
+                    req.session.isLoggedIn = true
+                    user.password = undefined
+                    req.session.user = user
+                    res.status(StatusCodes.OK).send({user,token})
+    
+                }else{
+                    throw UnAuthorizedAccess(
+                        `Invalid User Password: ${user}`,
+                        "Please Provide Correct Password"
+                    )
+                }
             }else{
                 throw UnAuthorizedAccess(
-                    `Invalid User Password: ${user}`,
-                    "Please Provide Correct Password"
-                ) 
+                    `Invalid User: ${user}`,
+                    "User does Not Exist"
+                )
             }
-            req.session.isLoggedIn = true
-            user.password = undefined
-            req.session.user = user
-            res.status(StatusCodes.OK).send({user,token})
+
         }catch(err){
             next(err)
         }finally{
@@ -69,21 +74,20 @@ class Auth{
             Auth.__selfEnd__()
         }
     }
-    postRegister(req,res,next){
+    async postRegister(req,res,next){
         try{
             Auth.__selfStart__()
             let user = ''
             const {email,username,phone,password} = req.body;
-            const isValid = this.authenticateFields(req.body,next);
+            const validator = new AuthValidator()
+            const isValid = await validator.authenticateFields(req.body,next);
             if (!isValid.error){
-                if(email === 'test@gmail.com'){
-                    throw UnAuthorizedAccess("User Alredy Exist")
-                }else if (username === 'Aditya Gupta'){
-                    throw UnAuthorizedAccess("User Alredy Exist")
-                }else if(phone === '+91-(000) 000 0000'){
-                    throw UnAuthorizedAccess("User Alredy Exist")
-                }else{
-                    user = email ? email : (username ? username : (phone ? phone : undefined) )
+                if(email){
+                    user = await userCredential.findOne({email}).select('+password').exec()
+                }else if (username){
+                    user = await userCredential.findOne({username}).select('+password').exec()
+                }else if(phone){
+                    user = await userCredential.findOne({phone}).select('+password').exec()
                 }
             }else{
                 let errorDetails = isValid.error.details
@@ -95,13 +99,37 @@ class Auth{
                 })
                 throw new ValidationError(errorValues);
             }
-            let token = '';
-            token = this.authSignature.signJWTToken(data,next);
-            
-            req.session.isLoggedIn = true
-            user.password = undefined
-            req.session.user = user
-            res.status(StatusCodes.OK).send({user,token})
+            if(!user){
+                const salt = await bcrypt.genSalt(10);
+                const passwordHash = await bcrypt.hash(isValid.value.password,salt); 
+                if (isValid.value.email){
+                    
+                    user = await userCredential.create({
+                        email:isValid.value.email,
+                        password:passwordHash
+                    })
+                    const schemaUser = usersSchema.create({
+                        userId:user._id,
+                        email:isValid.value.email,
+                        password:isValid.value.password
+                    })
+                }
+                const data = {
+                    'userId':user._id
+                }
+                const authSignature = new Authentication();
+                const token = await authSignature.signJWTToken(data,next);
+                
+                req.session.isLoggedIn = true
+                user.password = undefined
+                req.session.user = user
+                res.cookie('jwt', token, { httpOnly: true, 
+                    sameSite: 'None', secure: true, 
+                    maxAge: 24 * 60 * 60 * 1000 });
+                res.status(StatusCodes.OK).send({user,token})
+            }else{
+
+            }
         }catch(err){
             next(err)
         }finally{
@@ -109,11 +137,11 @@ class Auth{
             Auth.__selfEnd__()
         }        
     }
-    postLogout(req,res,next){
+    async postLogout(req,res,next){
         try{
             Auth.__selfStart__()
             req.session.destroy(err => {
-                console.log(err)
+                next(err)
             })
             res.status(StatusCodes.OK).send({'msg':'Redirect to Login Page'})    
         }catch(err){
@@ -122,6 +150,37 @@ class Auth{
             console.log(`\n----- ${this.className} -> postLogout Method Called ->\n`)
             Auth.__selfEnd__()
         }     
+    }
+    async postRefreshToken(req,res,next){
+        try{
+            Auth.__selfStart__()
+            const refreshJWTCookie = req.cookies?.jwt;
+            if(refreshJWTCookie){
+                const authSignature = new Authentication();
+                const refreshTokenValue = refreshJWTCookie['refreshToken']
+                const refreshToken = await authSignature.verifyRefreshToken(refreshTokenValue,next)
+                if(refreshToken){
+                    const tokenDecoder = refreshJWTCookie['accessToken'].split('.')[1]
+                    const decodeValue = JSON.parse(window.atob(tokenDecoder));
+                    const newAccessToken = await authSignature.signJWTToken(decodeValue,next)
+                    if (newAccessToken) {
+                        req.session.isLoggedIn = true
+                        user.password = undefined
+                        req.session.user = user
+                        res.cookie('jwt', token, { httpOnly: true, 
+                            sameSite: 'None', secure: true, 
+                            maxAge: 24 * 60 * 60 * 1000 });
+                            res.status(StatusCodes.OK).send({decodeValue,newAccessToken})
+    
+                    }
+                }
+            }
+        }catch(err){
+            next(err)
+        }finally{
+            console.log(`\n----- ${this.className} -> postRefreshToken Method Called ->\n`)
+            Auth.__selfEnd__()
+        }
     }
 }
 export default Auth;

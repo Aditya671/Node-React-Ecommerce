@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
-import usersValidator from "../../validators/user-schema";
+import usersValidator from "../../validators/user-schema.js";
 
 const usersValidate = new usersValidator();
 const usersSchema = mongoose.Schema({
    userId:String,
    username:String,
+   password:String,
    age:Number,
    title:String,
    firstName:String,

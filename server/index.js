@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import mongoSantitze from 'express-mongo-sanitize';
 import "express-async-errors";
 import bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import xss from 'xss-clean';
 import helmet from 'helmet';
@@ -46,6 +47,7 @@ const rateLimiter = rateLimit({
 
 // app.use(express.static(applicationPath("./client/public")));
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
 app.use(xss());
 app.use(helmet());
 app.use(rateLimiter);
@@ -53,7 +55,7 @@ app.use(mongoSantitze());
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(session({
-   secret: process.env.SECRET_CIPHER,
+   secret: process.env.REFRESH_SECRET_CIPHER,
    resave: false,
    saveUninitialized: false,
    store: store,

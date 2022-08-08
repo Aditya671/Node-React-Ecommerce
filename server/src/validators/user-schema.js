@@ -8,6 +8,7 @@ class usersValidator{
     }
     validateUserSchema(fieldsObj){
         try{
+            usersValidator.__self__()
             const isValid = Joi.object({
                 userId:Joi.string().id().required(),
                 username:Joi.string().min(6).max(20).required(),
