@@ -7,5 +7,6 @@ const auth = new Auth()
 router.post('/login',auth.postLogin)
 router.post('/logout',auth.postLogout)
 router.post('/register',auth.postRegister)
+router.post('/refresh',auth.postRefreshToken)
 
 export default router;
