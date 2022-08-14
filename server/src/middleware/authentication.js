@@ -1,28 +1,29 @@
-import { StatusCodes } from "http-status-codes"
 import jwt from "jsonwebtoken"
 import { generateSecketCipher } from "./cipher-text.js"
 import { ValidationError } from "../handlers/exceptions/ValidationError.js";
+import { UnAuthorizedAccess } from "../handlers/exceptions/UnAuthorizedAccess.js";
+import { ENTER_TOKEN, INVALID_TOKEN } from "../utils/constants.js";
 
 
 class Authentication {
     constructor() {
-        this.secretJWTKey = generateSecketCipher()
+        this.secretJWTKey = generateSecketCipher
     }
     static __self__() {
         return console.log('\n -----> Authentication Signature -> \n')
     }
-    async signJWTToken(data, next) {
+    async signJWTToken(data = {}, next) {
         try {
             const accessString = process.env.ACCESS_SECRET_CIPHER
             const refreshString = process.env.REFRESH_SECRET_CIPHER
-            const accessToken = await jwt.sign(data, generateSecketCipher(accessString), { expiresIn: process.env.ACCESS_JWT_LIETIME })
-            const refreshToken = await jwt.sign(data, generateSecketCipher(refreshString), { expiresIn: process.env.REFRESH_JWT_LIFETIME })
-            if (token) 
+            const accessToken = await jwt.sign(data, this.secretJWTKey(accessString), { expiresIn: process.env.ACCESS_JWT_LIETIME })
+            const refreshToken = await jwt.sign(data, this.secretJWTKey(refreshString), { expiresIn: process.env.REFRESH_JWT_LIFETIME })
+            if (accessToken && refreshToken) 
                 return {
                     'accessToken':accessToken,
-                    'refreshToken':refreshToken,
+                    'refreshToken':refreshToken
                 }
-            else new ValidationError("Issue with signing token");
+            else throw new ValidationError("Issue with signing token");
         }
         catch (err) {
             next(err)
@@ -31,39 +32,34 @@ class Authentication {
             console.log('\n----- Authentication -> signJWTToken Method Called ->\n')
         }
     }
-    async verifyAccessToken(tokenValue, next){
-        try{
-            const accessString = process.env.ACCESS_SECRET_CIPHER
-            
-            const isVerifed = await verifyToken(tokenValue,accessString)
-            return isVerifed
-        }catch(err){
-            next(err)
-        }finally{
-            console.log('\n----- Authentication -> verifyAccessToken Method Called ->\n') 
-        }
-    }
-    async verifyRefreshToken(tokenValue, next){
-        try{
-            const refreshString = process.env.REFRESH_SECRET_CIPHER
-            const isVerifed = await verifyToken(tokenValue,refreshString)
-            return isVerifed
-        }catch(err){
-            next(err)
-        }finally{
-            console.log('\n----- Authentication -> verifyRefreshToken Method Called ->\n') 
-        }
-    }
-    async verifyToken(tokenValue,tokenString) {
+    async verifyToken(tokenValue,tokenString,next) {
         try {
-            const isVerifed = jwt.verify(tokenValue, generateSecketCipher(tokenString))
+            const verifier = this.secretJWTKey(tokenString)
+            const isVerifed = await jwt.verify(tokenValue,verifier )
             if (isVerifed) return token
-            else new ValidationError("Token Invalid")
+            else throw new ValidationError(INVALID_TOKEN,ENTER_TOKEN)
         } catch (err) {
             next(err)
 
         } finally {
             console.log('\n----- Authentication -> verifyToken Method Called ->\n')
+        }
+    }
+    async tokenExistsInRequest(req,res,next){
+        try{
+            const token = req.header.authentication
+            const bearerToken = token.split(' ')[1];
+            if(!bearerToken || !token.startsWith('Bearer')){
+                throw new UnAuthorizedAccess(INVALID_TOKEN,ENTER_TOKEN)
+            }else{
+                const accessString = process.env.ACCESS_SECRET_CIPHER
+                const validateToken = await this.verifyToken(bearerToken,accessString,next);
+                return validateToken
+            }
+        }catch(err){
+            next(err)
+        }finally{
+            console.log('\n----- Authentication -> tokenExistsInRequest Method Called ->\n')
         }
     }
 }

@@ -44,24 +44,25 @@ class Auth{
                 throw new ValidationError(errorValues);
             }
             if (user){
-                const isPasswordCorrect  = await bcrypt.compare(user.password, password);
+                const isPasswordCorrect  = await bcrypt.compareSync(password,user.password);
                 if (isPasswordCorrect){
-                    const data = {email:email,user:user.password};
+                    const data = {email:email,userId:user.id};
                     const authSignature = new Authentication();
                     const token = await authSignature.signJWTToken(data,next);
                     req.session.isLoggedIn = true
                     user.password = undefined
-                    req.session.user = user
-                    res.status(StatusCodes.OK).send({user,token})
+                    req.session.user = data
+                    req.session.token = token['refreshToken']
+                    res.status(StatusCodes.OK).send({user:data,token:token['accessToken']})
     
                 }else{
-                    throw UnAuthorizedAccess(
-                        `Invalid User Password: ${user}`,
+                    throw new UnAuthorizedAccess(
+                        `Invalid User Password: ${user.id}`,
                         "Please Provide Correct Password"
                     )
                 }
             }else{
-                throw UnAuthorizedAccess(
+                throw new UnAuthorizedAccess(
                     `Invalid User: ${user}`,
                     "User does Not Exist"
                 )
@@ -77,9 +78,10 @@ class Auth{
     async postRegister(req,res,next){
         try{
             Auth.__selfStart__()
-            let user = ''
+            let user = null
             const {email,username,phone,password} = req.body;
-            const validator = new AuthValidator()
+            const validator = new AuthValidator();
+            const authSignature = new Authentication();
             const isValid = await validator.authenticateFields(req.body,next);
             if (!isValid.error){
                 if(email){
@@ -108,27 +110,31 @@ class Auth{
                         email:isValid.value.email,
                         password:passwordHash
                     })
-                    const schemaUser = usersSchema.create({
-                        userId:user._id,
+                    const schemaUser = await usersSchema.create({
+                        userId:user?.id,
                         email:isValid.value.email,
                         password:isValid.value.password
                     })
                 }
                 const data = {
-                    'userId':user._id
+                    email:user?.email,
+                    userId:user?.id
                 }
-                const authSignature = new Authentication();
                 const token = await authSignature.signJWTToken(data,next);
                 
                 req.session.isLoggedIn = true
                 user.password = undefined
-                req.session.user = user
-                res.cookie('jwt', token, { httpOnly: true, 
-                    sameSite: 'None', secure: true, 
-                    maxAge: 24 * 60 * 60 * 1000 });
-                res.status(StatusCodes.OK).send({user,token})
+                req.session.user = data
+                req.session.token = token['refreshToken']
+                // res.cookie('jwt', token, { httpOnly: true, 
+                //     sameSite: 'None', secure: true, 
+                //     maxAge: 24 * 60 * 60 * 1000 });
+                res.status(StatusCodes.OK).send({user:data,token:token['accessToken'] })
             }else{
-
+                throw new UnAuthorizedAccess(
+                    "Please enter new details",
+                    `User "${user.id}" already exists`
+                )
             }
         }catch(err){
             next(err)
@@ -147,19 +153,24 @@ class Auth{
         }catch(err){
             next(err)
         }finally{            
-            console.log(`\n----- ${this.className} -> postLogout Method Called ->\n`)
+            console.log(`\n----- ${Auth.name} -> postLogout Method Called ->\n`)
             Auth.__selfEnd__()
         }     
     }
     async postRefreshToken(req,res,next){
         try{
             Auth.__selfStart__()
+            /* Method to follow if cookie was sent directly in this Way:
+            Example: res.cookie('jwt',............)
+             
             const refreshJWTCookie = req.cookies?.jwt;
             if(refreshJWTCookie){
                 const authSignature = new Authentication();
                 const refreshTokenValue = refreshJWTCookie['refreshToken']
-                const refreshToken = await authSignature.verifyRefreshToken(refreshTokenValue,next)
+                const refreshString = process.env.REFRESH_SECRET_CIPHER
+                const refreshToken = await authSignature.verifyToken(refreshTokenValue,refreshString,next)
                 if(refreshToken){
+                    const authSignature = new Authentication();
                     const tokenDecoder = refreshJWTCookie['accessToken'].split('.')[1]
                     const decodeValue = JSON.parse(window.atob(tokenDecoder));
                     const newAccessToken = await authSignature.signJWTToken(decodeValue,next)
@@ -175,10 +186,29 @@ class Auth{
                     }
                 }
             }
+            */
+            const sessionRefreshToken = req.session.token
+            const isLoggedIn = req.session.isLoggedIn
+            const cookieExpiry = new Date(req.session.cookie._expires);
+            if (isLoggedIn && sessionRefreshToken){
+                const authSignature = new Authentication();
+                const refreshString = process.env.REFRESH_SECRET_CIPHER
+                const refreshToken = await authSignature.verifyToken(sessionRefreshToken,refreshString,next);
+                if(refreshToken){
+                    const user = req.session.cookie.user
+                    const newToken = await authSignature.signJWTToken(user,next)
+                    if (newToken) {
+                        req.session.isLoggedIn = true
+                        req.session.user = user
+                        req.session.token = newToken['refreshToken']
+                        res.status(StatusCodes.OK).send({token: newToken['accessToken']})
+                    }
+                }
+            }
         }catch(err){
             next(err)
         }finally{
-            console.log(`\n----- ${this.className} -> postRefreshToken Method Called ->\n`)
+            console.log(`\n----- ${Auth.name} -> postRefreshToken Method Called ->\n`)
             Auth.__selfEnd__()
         }
     }
