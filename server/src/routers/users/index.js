@@ -1,9 +1,12 @@
 import express from "express";
-import UsersController from "../../controllers/users";
-import Authentication from "../../middleware/authentication";
+import UsersController from "../../controllers/users/index.js";
+import Authentication from "../../middleware/authentication.js";
 
-const authneticationReq = new Authentication();
+const authenticationReq = new Authentication();
 const userController = new UsersController();
 const router = express.Router();
 
-router.get('/user/:id',authneticationReq.tokenExistsInRequest,userController.getUserDetailsById)
+router.get('/user/:userId',
+    userController.getUserDetailsById);
+
+export default router;

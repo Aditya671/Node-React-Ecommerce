@@ -8,11 +8,12 @@ import { ENTER_TOKEN, INVALID_TOKEN } from "../utils/constants.js";
 class Authentication {
     constructor() {
         this.secretJWTKey = generateSecketCipher
+        this.className = "Authentication"
     }
     static __self__() {
-        return console.log('\n -----> Authentication Signature -> \n')
+        return console.log(`\n -----> ${this.name} -> \n`)
     }
-    async signJWTToken(data = {}, next) {
+    signJWTToken = async (data = {}, next) => {
         try {
             const accessString = process.env.ACCESS_SECRET_CIPHER
             const refreshString = process.env.REFRESH_SECRET_CIPHER
@@ -29,27 +30,14 @@ class Authentication {
             next(err)
         }
         finally {
-            console.log('\n----- Authentication -> signJWTToken Method Called ->\n')
+            console.log(`\n----- ${this.className} -> signJWTToken Method Called ->\n`)
         }
     }
-    async verifyToken(tokenValue,tokenString,next) {
-        try {
-            const verifier = this.secretJWTKey(tokenString)
-            const isVerifed = await jwt.verify(tokenValue,verifier )
-            if (isVerifed) return token
-            else throw new ValidationError(INVALID_TOKEN,ENTER_TOKEN)
-        } catch (err) {
-            next(err)
-
-        } finally {
-            console.log('\n----- Authentication -> verifyToken Method Called ->\n')
-        }
-    }
-    async tokenExistsInRequest(req,res,next){
+    tokenExistsInRequest = async (req,res,next) => {
         try{
-            const token = req.header.authentication
-            const bearerToken = token.split(' ')[1];
-            if(!bearerToken || !token.startsWith('Bearer')){
+            const token = req.headers[`authorization`]
+            const bearerToken = token.split(` `)[1];
+            if(!bearerToken || !token.startsWith(`Bearer`)){
                 throw new UnAuthorizedAccess(INVALID_TOKEN,ENTER_TOKEN)
             }else{
                 const accessString = process.env.ACCESS_SECRET_CIPHER
@@ -59,7 +47,20 @@ class Authentication {
         }catch(err){
             next(err)
         }finally{
-            console.log('\n----- Authentication -> tokenExistsInRequest Method Called ->\n')
+            console.log(`\n----- ${this.className} -> tokenExistsInRequest Method Called ->\n`)
+        }
+    }
+    verifyToken = async (tokenValue,tokenString,next) => {
+        try {
+            const verifier = this.secretJWTKey(tokenString)
+            const isVerifed = await jwt.verify(tokenValue,verifier )
+            if (isVerifed) return token
+            else throw new ValidationError(INVALID_TOKEN,ENTER_TOKEN)
+        } catch (err) {
+            next(err)
+
+        } finally {
+            console.log(`\n----- ${this.className} -> verifyToken Method Called ->\n`)
         }
     }
 }
