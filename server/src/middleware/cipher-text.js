@@ -3,7 +3,7 @@ import crypto from 'crypto';
 export const generateSecketCipher = (token) => {
    const initVector = crypto.randomBytes(16);
    const Securitykey = crypto.randomBytes(32);
-   const algo = 'aes-256-cbc';
+   const algo = 'aes256';
 
    const cipherText = crypto.createCipheriv( algo, Securitykey,initVector  );
    const secret = cipherText.update(token, 'utf8', 'hex')

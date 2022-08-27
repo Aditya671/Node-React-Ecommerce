@@ -17,8 +17,8 @@ class Authentication {
         try {
             const accessString = process.env.ACCESS_SECRET_CIPHER
             const refreshString = process.env.REFRESH_SECRET_CIPHER
-            const accessToken = await jwt.sign(data, this.secretJWTKey(accessString), { expiresIn: process.env.ACCESS_JWT_LIETIME })
-            const refreshToken = await jwt.sign(data, this.secretJWTKey(refreshString), { expiresIn: process.env.REFRESH_JWT_LIFETIME })
+            const accessToken = await jwt.sign(data, accessString,{algorithm: 'HS256',expiresIn: '4h'})
+            const refreshToken = await jwt.sign(data, refreshString, { algorithm: 'HS256',expiresIn: '2h'})
             if (accessToken && refreshToken) 
                 return {
                     'accessToken':accessToken,
@@ -42,7 +42,9 @@ class Authentication {
             }else{
                 const accessString = process.env.ACCESS_SECRET_CIPHER
                 const validateToken = await this.verifyToken(bearerToken,accessString,next);
-                return validateToken
+                if(validateToken){
+                    next()
+                }
             }
         }catch(err){
             next(err)
@@ -53,8 +55,8 @@ class Authentication {
     verifyToken = async (tokenValue,tokenString,next) => {
         try {
             const verifier = this.secretJWTKey(tokenString)
-            const isVerifed = await jwt.verify(tokenValue,verifier )
-            if (isVerifed) return token
+            const isVerifed = await jwt.verify(tokenValue,tokenString,{algorithms:['HS256']} )
+            if (isVerifed) return true
             else throw new ValidationError(INVALID_TOKEN,ENTER_TOKEN)
         } catch (err) {
             next(err)

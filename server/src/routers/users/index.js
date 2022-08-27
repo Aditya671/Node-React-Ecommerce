@@ -6,7 +6,7 @@ const authenticationReq = new Authentication();
 const userController = new UsersController();
 const router = express.Router();
 
-router.get('/user/:userId',
+router.get('/user/:userId', authenticationReq.tokenExistsInRequest,
     userController.getUserDetailsById);
 
 export default router;

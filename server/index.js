@@ -59,7 +59,7 @@ app.use(session({
    resave: false,
    saveUninitialized: false,
    store: store,
-   cookie: { maxAge: 1000 * 60 * 60 * 24 * 1 }
+   cookie: { maxAge: process.env.REFRESH_JWT_LIFETIME }
 }
 ));
 app.use(morgan(process.env.NODE_ENV_DEV))
