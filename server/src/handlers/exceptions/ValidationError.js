@@ -6,6 +6,6 @@ export class ValidationError extends CustomAPIError {
       super(null,null,description,null);
       this.name = 'Validation Error'
       this.errorCode = StatusCodes.BAD_REQUEST
-      this.message = "Issue with Provided Entries"
+      this.details = "Issue with Provided Entries"
    }
 }

@@ -3,8 +3,8 @@ import { StatusCodes } from 'http-status-codes';
 
 
 class ServerError extends CustomAPIError {
-   constructor(description,message) {
-      super(null,null,description,message);
+   constructor(description,details) {
+      super(null,null,description,details);
       this.name = "SERVER ERROR"
       this.errorCode = StatusCodes.INTERNAL_SERVER_ERROR
    }

@@ -12,13 +12,13 @@ export const errorHandler = (err, req, res, next) => {
 
     if (err) {
         defaultError.name = err.name === undefined ? 'INTERNAL SERVER ERROR' : err.name
-        defaultError.errorCode = err.errorCode === undefined ? StatusCodes.INTERNAL_SERVER_ERROR : err.errorCode,
-        defaultError.description = err.description === undefined ? "Server Error":err.description,
-        defaultError.message = err.message === undefined ? "Please try again later":err.message
+        defaultError.errorCode = err.errorCode === undefined ? StatusCodes.INTERNAL_SERVER_ERROR : err.errorCode
+        defaultError.description = err.description === undefined ? "Server Error" : err.description
+        defaultError.details = err.details === undefined ? "Please try again later" : err.details
     }
-    if (req.file) { 
+    if (req.file) {
         fs.unlink(req.file.path, (err) => {
-            defaultError.message = err.message;
+            defaultError.details = err.details;
         })
     }
     res.status(defaultError.errorCode).send(defaultError)
