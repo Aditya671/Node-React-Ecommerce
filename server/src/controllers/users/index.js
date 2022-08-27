@@ -2,6 +2,7 @@ import { StatusCodes } from "http-status-codes";
 import {ValidationError} from "../../handlers/exceptions/ValidationError.js";
 import ServerError from "../../handlers/exceptions/ServerError.js";
 import usersSchema from "../../models/users/index.js";
+import { DOES_NOT_EXIST, INVALID_QUERY, NO_DATA, PROVIDE_VALUE, VALUE_MISSING } from "../../utils/constants.js";
 
 class UsersController{
     constructor(){
@@ -23,15 +24,15 @@ class UsersController{
                     usersSchema.findOne({userId}).select(['-__v','-password'])
                     .then((doc) => 
                     doc ? res.status(StatusCodes.OK).send(doc) : 
-                        res.status(StatusCodes.OK).send({msg:"No Record Found"})
+                        res.status(StatusCodes.OK).send({msg:NO_DATA})
                     ).catch((err) => {
-                        throw new ServerError("Query Error",err)
+                        throw new ServerError(INVALID_QUERY,err)
                     })
                 }else
-                    throw new ServerError("User does not exist",err)
+                    throw new ServerError(DOES_NOT_EXIST.replace(/{item}/i,'User'),err)
 
             }else{
-                throw new ValidationError("UserId missing","Please Provide user id")
+                throw new ValidationError(VALUE_MISSING.replace(/{value}/i,'User id'),PROVIDE_VALUE.replace(/{value}/i,'user id'))
             }
         }catch(err){
             next(err)

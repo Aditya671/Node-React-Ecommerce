@@ -6,6 +6,7 @@ import {ValidationError} from "../../handlers/exceptions/ValidationError.js";
 import Authentication from "../../middleware/authentication.js";
 import userCredential from "../../models/auth/index.js";
 import usersSchema from "../../models/users/index.js";
+import { ALREADY_EXIST, DOES_NOT_EXIST, INVALID_VALUE, PROVIDE_PROPER_VALUE, PROVIDE_VALUE, REDIRECT_TO } from "../../utils/constants.js";
 
 class Auth{
     constructor(){
@@ -57,14 +58,14 @@ class Auth{
     
                 }else{
                     throw new UnAuthorizedAccess(
-                        `Invalid User Password: ${user.id}`,
-                        "Please Provide Correct Password"
+                        INVALID_VALUE.replace(/{value}/i,"password"),
+                        PROVIDE_VALUE.replace(/{value}/i,"Password")
                     )
                 }
             }else{
                 throw new UnAuthorizedAccess(
-                    `Invalid User: ${user}`,
-                    "User does Not Exist"
+                    `${INVALID_VALUE.replace(/{item}/i,"User")}: ${user}`,
+                    DOES_NOT_EXIST.replace(/{item}/i,"User")
                 )
             }
 
@@ -132,8 +133,8 @@ class Auth{
                 res.status(StatusCodes.OK).send({user:data,token:token['accessToken'] })
             }else{
                 throw new UnAuthorizedAccess(
-                    "Please enter new details",
-                    `User "${user.id}" already exists`
+                    PROVIDE_PROPER_VALUE,
+                    ALREADY_EXIST.replace(/{value}/i,"User")
                 )
             }
         }catch(err){
@@ -149,7 +150,7 @@ class Auth{
             req.session.destroy(err => {
                 next(err)
             })
-            res.status(StatusCodes.OK).send({'msg':'Redirect to Login Page'})    
+            res.status(StatusCodes.OK).send({'msg':REDIRECT_TO.replace(/{item}/i,'Login Page')})    
         }catch(err){
             next(err)
         }finally{            
