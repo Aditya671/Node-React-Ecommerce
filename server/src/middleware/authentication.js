@@ -44,6 +44,8 @@ class Authentication {
                 const validateToken = await this.verifyToken(bearerToken,accessString,next);
                 if(validateToken){
                     next()
+                }else{
+                    throw new UnAuthorizedAccess(INVALID_TOKEN,UNAUTHORIZED_USER)
                 }
             }
         }catch(err){

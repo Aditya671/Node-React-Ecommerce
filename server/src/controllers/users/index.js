@@ -20,7 +20,7 @@ class UsersController{
             if(userId){
                 const userExist = usersSchema.exists({userId:userId})
                 if(userExist){
-                    usersSchema.findOne({userId}).select('-__v')
+                    usersSchema.findOne({userId}).select(['-__v','-password'])
                     .then((doc) => 
                     doc ? res.status(StatusCodes.OK).send(doc) : 
                         res.status(StatusCodes.OK).send({msg:"No Record Found"})
